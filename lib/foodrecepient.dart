@@ -1,290 +1,151 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(MaterialApp(home: FoodRecipientPage()));
-}
-
+import 'package:geolocator/geolocator.dart';
+import 'dart:math';
 class FoodRecipientPage extends StatefulWidget {
   @override
   _FoodRecipientPageState createState() => _FoodRecipientPageState();
 }
 
 class _FoodRecipientPageState extends State<FoodRecipientPage> {
-  final List<Map<String, String>> availableFood = [
-    {
-      "food": "Rice & Curry",
-      "location": "Community Center",
-      "type": "Vegetarian",
-      "capacity": "Serves 3",
-      "prepared": "Today 12:00 PM",
-      "delivery": "Pickup",
-      "provider": "John Doe",
-      "organization": "Helping Hands"
-    },
-    {
-      "food": "Bread & Soup",
-      "location": "Food Bank",
-      "type": "Vegan",
-      "capacity": "Serves 2",
-      "prepared": "Today 3:00 PM",
-      "delivery": "Delivery",
-      "provider": "Jane Smith",
-      "organization": "Food for All"
-    },
+  final Color tomatoRed = Color(0xFFD72D42);
+  String userLocation = "Fetching location...";
+  List<String> nearbyLocations = [];
+  List<Map<String, String>> cart = [];
+
+  final Map<String, List<double>> locations = {
+    "Tambaram": [12.9249, 80.1275],
+    "Porur": [13.0361, 80.1588],
+    "Ramapuram": [13.0331, 80.1860],
+    "Velachery": [12.9784, 80.2186],
+    "Avadi": [13.1148, 80.1095],
+    "Anna Nagar": [13.0878, 80.2105],
+    "Chrompet": [12.9504, 80.1411],
+    "Pallavaram": [12.9678, 80.1492]
+  };
+
+  List<Map<String, String>> orders = [
+    {"food": "Rice & Curry", "location": "Avadi", "address": "123 Avadi Main Road", "type": "Vegetarian", "capacity": "Serves 3", "prepared": "Today 12:00 PM", "delivery": "Pickup", "provider": "John Doe", "organization": "Helping Hands"},
+    {"food": "Bread & Soup", "location": "Porur", "address": "456 Porur Street", "type": "Vegetarian", "capacity": "Serves 2", "prepared": "Today 1:00 PM", "delivery": "Pickup", "provider": "Alex Smith", "organization": "Food Bank"},
+    {"food": "Dosa & Sambar", "location": "Ramapuram", "address": "789 Ramapuram Lane", "type": "Vegetarian", "capacity": "Serves 4", "prepared": "Today 2:00 PM", "delivery": "Pickup", "provider": "Emma Watson", "organization": "Community Care"},
+    {"food": "Idly & Chutney", "location": "Velachery", "address": "101 Velachery Road", "type": "Vegetarian", "capacity": "Serves 3", "prepared": "Today 8:00 AM", "delivery": "Pickup", "provider": "Mike Johnson", "organization": "Food Relief"},
+    {"food": "Pongal & Vada", "location": "Chrompet", "address": "222 Chrompet Crossroad", "type": "Vegetarian", "capacity": "Serves 2", "prepared": "Today 10:00 AM", "delivery": "Pickup", "provider": "Sarah Lee", "organization": "Hunger Help"},
+    {"food": "Chapati & Kurma", "location": "Tambaram", "address": "333 Tambaram Main Road", "type": "Vegetarian", "capacity": "Serves 3", "prepared": "Today 7:30 AM", "delivery": "Pickup", "provider": "David Kumar", "organization": "Good Eats"}
   ];
 
-  int _selectedIndex = 0;
+  @override
+  void initState() {
+    super.initState();
+    _getUserLocation();
+  }
 
-  void _onItemTapped(int index) {
-    if (index == 0) {
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => ProfilePage()));
-    }
+  Future<void> _getUserLocation() async {
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    List<String> nearestLocations = _getNearestLocations(position.latitude, position.longitude);
+
     setState(() {
-      _selectedIndex = index;
+      userLocation = nearestLocations.isNotEmpty ? nearestLocations.first : "Unknown";
+      nearbyLocations = nearestLocations;
     });
   }
 
+  List<String> _getNearestLocations(double latitude, double longitude) {
+    List<MapEntry<String, double>> distances = locations.entries.map((entry) {
+      double distance = _calculateDistance(latitude, longitude, entry.value[0], entry.value[1]);
+      return MapEntry(entry.key, distance);
+    }).toList();
+
+    distances.sort((a, b) => a.value.compareTo(b.value));
+
+    return distances.map((entry) => entry.key).toList();
+  }
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const double p = 0.017453292519943295; // Pi/180
+    //const double c = cos;
+    double a = 0.5 - cos((lat2 - lat1) * p) / 2 + 
+               cos(lat1 * p) * cos(lat2 * p) * 
+               (1 - cos((lon2 - lon1) * p)) / 2;
+    return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
+  }
+
+  void _confirmOrder(Map<String, String> order) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Confirm Order"),
+          content: Text("Are you sure you want to add ${order['food']} to your cart?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  cart.add(order);
+                });
+                Navigator.of(context).pop();
+                Navigator.push(context, MaterialPageRoute(builder: (context) => movingbikemap()));
+              },
+              child: Text("Confirm"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    List<Map<String, String>> recommendedOrders = orders.where((order) => nearbyLocations.contains(order["location"])).toList();
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        title:
-            Text("Available Food", style: TextStyle(color: Color(0xFFED254E))),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.notifications, color: Color(0xFFED254E)),
-            onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => NotificationPage()));
-            },
+        title: Text("Food Orders", style: TextStyle(color: Colors.white)),
+        backgroundColor: tomatoRed,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text("Recommended", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: recommendedOrders.length,
+              itemBuilder: (context, index) {
+                return Card(
+                  color: tomatoRed,
+                  child: ListTile(
+                    title: Text(recommendedOrders[index]["food"]!, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    subtitle: Text("Location: ${recommendedOrders[index]["location"]}, ${recommendedOrders[index]["address"]}", style: TextStyle(color: Colors.white)),
+                    trailing: TextButton(
+                      onPressed: () => _confirmOrder(recommendedOrders[index]),
+                      child: Text("Add to Cart", style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: availableFood.length,
-        itemBuilder: (context, index) {
-          return Card(
-            color: Colors.grey[900],
-            margin: EdgeInsets.all(10),
-            child: ListTile(
-              title: Text(
-                availableFood[index]["food"]!,
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
-              ),
-              subtitle: Text("Location: ${availableFood[index]["location"]}",
-                  style: TextStyle(color: Colors.grey[400])),
-              trailing: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFED254E)),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          FoodDetailPage(foodData: availableFood[index]),
-                    ),
-                  );
-                },
-                child: Text('View', style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          );
-        },
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.location_on), label: "Live Location"),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chatbot"),
-        ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
     );
   }
 }
 
-// Food Detail Page
-class FoodDetailPage extends StatelessWidget {
-  final Map<String, String> foodData;
-
-  FoodDetailPage({required this.foodData});
-
+class movingbikemap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        title:
-            Text(foodData["food"]!, style: TextStyle(color: Color(0xFFED254E))),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Color(0xFFED254E)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: Text("Moving Bike Map"),
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 200,
-              width: double.infinity,
-              color: Colors.grey[700], // Grey Placeholder for Image
-              child: Center(
-                child: Text(
-                  "Food Image",
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Text("Food Name: ${foodData["food"]}", style: foodDetailStyle),
-            Text("Food Type: ${foodData["type"]}", style: foodDetailStyle),
-            Text("Location: ${foodData["location"]}", style: foodDetailStyle),
-            Text("Prepared Time: ${foodData["prepared"]}",
-                style: foodDetailStyle),
-            Text("Serves: ${foodData["capacity"]}", style: foodDetailStyle),
-            Text("Delivery: ${foodData["delivery"]}", style: foodDetailStyle),
-            Text("Provider: ${foodData["provider"]}", style: foodDetailStyle),
-            Text("Organization: ${foodData["organization"]}",
-                style: foodDetailStyle),
-            SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFED254E)),
-                onPressed: () {},
-                child:
-                    Text("Add to Cart", style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
+      body: Center(
+        child: Text("Map showing the moving bike will be displayed here."),
       ),
-    );
-  }
-}
-
-TextStyle foodDetailStyle = TextStyle(color: Colors.white, fontSize: 16);
-
-// Profile Page with Input Boxes
-class ProfilePage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        title: Text("Profile", style: TextStyle(color: Color(0xFFED254E))),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Color(0xFFED254E)),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ProfileField("Full Name"),
-            ProfileField("Phone Number"),
-            ProfileField("Email Address"),
-            ProfileField("Current Location"),
-            ProfileField("Availability (Days & Time)"),
-            ProfileField("Preferred Service Area"),
-            ProfileField("Mode of Transport"),
-            SizedBox(height: 30),
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFED254E)),
-                child: Text("Sign Out", style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Profile Input Field with Box
-class ProfileField extends StatelessWidget {
-  final String label;
-  ProfileField(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
-        style: TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.grey[400]),
-          enabledBorder:
-              OutlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-          focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFFED254E))),
-          filled: true,
-          fillColor: Colors.grey[900],
-        ),
-      ),
-    );
-  }
-}
-
-// Notification Page
-class NotificationPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        title:
-            Text("Notifications", style: TextStyle(color: Color(0xFFED254E))),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Color(0xFFED254E)),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: ListView(
-        padding: EdgeInsets.all(16),
-        children: [
-          NotificationItem("Your food listing was accepted."),
-          NotificationItem("New donation request received."),
-          NotificationItem("Reminder: Your food expires in 2 hours."),
-        ],
-      ),
-    );
-  }
-}
-
-class NotificationItem extends StatelessWidget {
-  final String message;
-  NotificationItem(this.message);
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(message, style: TextStyle(color: Colors.white)),
     );
   }
 }
