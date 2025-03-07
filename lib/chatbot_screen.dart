@@ -73,7 +73,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     if (userMessage.toLowerCase().contains("hello")) {
       botResponse = "Hello! How can I assist you today?";
-    } else if (userMessage.toLowerCase().contains("location")) {
+    } else if  (userMessage.toLowerCase().contains("hi")) {
+      botResponse = "Hello! How can I assist you today?";
+    } else if(userMessage.toLowerCase().contains("location")) {
       botResponse = "Your registered location is: Tambaram, Chennai.";
     } else if (userMessage.toLowerCase().contains("food")) {
       botResponse = "You can donate or request food via our app!";
