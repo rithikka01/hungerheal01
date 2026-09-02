@@ -1,0 +1,20 @@
+{
+    "archived_count": 2,
+    "archived_at": "2026-09-02T23:49:35.639852",
+    "archived_listings": [
+        {
+            "id": "L001",
+            "food": "Rice and Curry",
+            "expiry_date": "2026-09-01",
+            "status": "archived",
+            "archived_at": "2026-09-02T23:49:35.639812"
+        },
+        {
+            "id": "L003",
+            "food": "Vegetable Meals",
+            "expiry_date": "2026-08-30",
+            "status": "archived",
+            "archived_at": "2026-09-02T23:49:35.639849"
+        }
+    ]
+}
